@@ -259,14 +259,15 @@ export default function DailyFiveQuiz({ profile, studentId, onBackToHome, onUpda
               </div>
 
               {/* Math Question Display */}
-              <div className="bg-amber-50/20 border-2 border-dashed border-amber-200/60 p-6 rounded-2xl my-2">
-                <p className="text-sm font-extrabold text-slate-800 leading-relaxed max-w-lg mx-auto whitespace-pre-line text-center">
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50/40 border-4 border-dashed border-amber-300 p-8 rounded-3xl my-4 text-center shadow-inner relative overflow-hidden">
+                <div className="absolute top-2 right-2 text-2xl opacity-20 pointer-events-none">⭐</div>
+                <p className="text-lg md:text-2xl font-black text-slate-900 leading-relaxed max-w-2xl mx-auto whitespace-pre-line">
                   {currentQuestion?.question}
                 </p>
               </div>
 
               {/* Choices Grid */}
-              <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="grid grid-cols-2 gap-4 mt-5">
                 {currentQuestion?.choices.map((choice, cIdx) => {
                   const isSelected = selectedAnswer === cIdx;
                   const isCorrectAnswer = cIdx === currentQuestion.correctIndex;
@@ -287,10 +288,10 @@ export default function DailyFiveQuiz({ profile, studentId, onBackToHome, onUpda
                       key={cIdx}
                       disabled={selectedAnswer !== null}
                       onClick={() => handleAnswerClick(cIdx)}
-                      className={`py-4 px-2 text-sm font-black rounded-2xl border-2 transition-transform flex items-center justify-center gap-1.5 ${btnStyle} hover:scale-[1.01]`}
+                      className={`py-5 px-4 text-base md:text-xl font-black rounded-3xl border-3 transition-transform flex items-center justify-center gap-2 shadow-sm ${btnStyle} hover:scale-[1.03] active:scale-95 duration-100`}
                     >
                       <span>{choice}</span>
-                      {selectedAnswer !== null && isCorrectAnswer && <Check className="w-4 h-4" />}
+                      {selectedAnswer !== null && isCorrectAnswer && <Check className="w-5 h-5 stroke-[3]" />}
                     </button>
                   );
                 })}

@@ -104,6 +104,34 @@ export default function App() {
   // Navigation: "map" | "shop" | "profile" | "training" | "battle" | "ai-quiz"
   const [activeTab, setActiveTab] = useState<string>("map");
   const [selectedStage, setSelectedStage] = useState<StageConfig>(STAGES[0]);
+  const [mapViewMode, setMapViewMode] = useState<"world" | "stage">("world");
+
+  // Helper helper to check if a learning age group stage is unlocked sequentially
+  const isWorldUnlocked = (stageId: string, currentProfile: UserProfile): boolean => {
+    if (stageId === "stage-k7") return true; // 7 years old is always open by default
+    
+    // 8 years old G1 is open if 7 years old K7 is mastered (>=3 bosses defeated) or if signup was higher age
+    if (stageId === "stage-g1") {
+      const k7Score = currentProfile.stats.stageHighScores["stage-k7"] || 0;
+      return k7Score >= 3 || currentProfile.ageGroup !== AgeGroup.K7;
+    }
+    
+    // 9 years old G2 is open if 8 years old G1 is mastered (>=3 bosses) or if signup was higher age (G2, G3)
+    if (stageId === "stage-g2") {
+      const g1Score = currentProfile.stats.stageHighScores["stage-g1"] || 0;
+      const isG1Unlocked = (currentProfile.stats.stageHighScores["stage-k7"] || 0) >= 3 || currentProfile.ageGroup !== AgeGroup.K7;
+      return (g1Score >= 3 && isG1Unlocked) || [AgeGroup.G2, AgeGroup.G3].includes(currentProfile.ageGroup);
+    }
+    
+    // 10 years old G3 is open if 9 years old G2 is mastered (>=3 bosses) or signup was G3
+    if (stageId === "stage-g3") {
+      const g2Score = currentProfile.stats.stageHighScores["stage-g2"] || 0;
+      const isG2Unlocked = (currentProfile.stats.stageHighScores["stage-g1"] || 0) >= 3 || [AgeGroup.G2, AgeGroup.G3].includes(currentProfile.ageGroup);
+      return (g2Score >= 3 && isG2Unlocked) || currentProfile.ageGroup === AgeGroup.G3;
+    }
+    
+    return false;
+  };
 
   // Concept Sandbox params (for interactive learning)
   const [sandboxVal1, setSandboxVal1] = useState<number>(6);
@@ -916,155 +944,317 @@ export default function App() {
             {activeTab === "map" && (
               <div id="tab-map-root" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Left col: Chapter Stage grid (2/3 width on large desktop) */}
+                {/* Left col: Area Navigator and Map Stage (2/3 width on large desktop) */}
                 <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-                    <h2 className="text-lg font-black text-slate-800 mb-1 flex items-center gap-2">
-                      ⚔️ 원리셈 수 연산 탐험 지도
-                    </h2>
-                    <p className="text-xs text-slate-500 mb-4">
-                      아이의 수학 단계에 맞춰 탐험 구역을 선택해 원리를 마스터하고 적들을 격파해 보세요!
-                    </p>
+                  
+                  {/* Kids-Friendly Difficulty & Initializer Toolbar */}
+                  <div className="bg-gradient-to-r from-pink-100 via-amber-50 to-indigo-100 rounded-3xl p-5 border-4 border-white shadow-md relative overflow-hidden">
+                    <div className="absolute -right-4 -bottom-4 text-7xl opacity-15 pointer-events-none select-none">🦄</div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <span className="bg-rose-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block w-fit mb-1 shadow-sm">
+                          모험 전투 난이도 요새 🏰
+                        </span>
+                        <h3 className="text-sm font-black text-slate-800">
+                          꼬마 용사님의 수학 난이도를 골라보세요!
+                        </h3>
+                      </div>
+                      
+                      {/* Entire Progress Reset Option for Parents */}
+                      <button
+                        onClick={handleResetApp}
+                        className="bg-white/80 hover:bg-white text-[11px] text-rose-500 font-extrabold px-3.5 py-1.5 rounded-xl border border-rose-200/50 transition-all flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer shadow-sm active:scale-95"
+                      >
+                        <span>🔄 모든 모험 초기화</span>
+                      </button>
+                    </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                      {STAGES.filter(s => s.ageGroup === profile.ageGroup).map((s, idx) => {
-                        const score = profile.stats.stageHighScores[s.id] || 0;
-                        const cardBg = s.id === "stage-k7" ? "hover:border-pink-300" : s.id === "stage-g1" ? "hover:border-amber-300" : s.id === "stage-g2" ? "hover:border-emerald-300" : "hover:border-sky-300";
-
+                    {/* Cute Difficulty Selector Buttons */}
+                    <div className="grid grid-cols-4 gap-2 mt-4">
+                      {[
+                        { key: "쉬움", icon: "👶", title: "어린이 쉬움", desc: "기본 세트 중심", color: "border-emerald-300 text-emerald-800 bg-emerald-50" },
+                        { key: "보통", icon: "⚔️", title: "용사 보통", desc: "사고력 35% 출현", color: "border-amber-300 text-amber-800 bg-amber-50" },
+                        { key: "어려움", icon: "🔥", title: "정예 어려움", desc: "사고력 70% 출현", color: "border-rose-300 text-rose-800 bg-rose-50" },
+                        { key: "지옥", icon: "😈", title: "마법사 지옥", desc: "100% 사고력/심화", color: "border-purple-300 text-purple-800 bg-purple-50" }
+                      ].map((lvl) => {
+                        const isSelected = profile.difficultyRank === lvl.key;
                         return (
-                          <div 
-                            key={s.id}
-                            className={`p-5 rounded-2xl border-2 transition-all relative flex flex-col justify-between group cursor-pointer ${cardBg} border-rose-500 bg-rose-50/5 shadow`}
+                          <button
+                            key={lvl.key}
+                            onClick={() => {
+                              setProfile(prev => {
+                                const updated = { ...prev, difficultyRank: lvl.key as "쉬움" | "보통" | "어려움" | "지옥" };
+                                localStorage.setItem("wonri_math_profile", JSON.stringify(updated));
+                                return updated;
+                              });
+                            }}
+                            className={`p-2 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+                              isSelected 
+                                ? `${lvl.color} border-current ring-4 ring-offset-1 ring-current bg-white scale-[1.03] shadow` 
+                                : "bg-white/50 border-slate-100 opacity-60 hover:opacity-100 hover:bg-white"
+                            }`}
                           >
-                            <span className="absolute -top-2.5 left-4 bg-rose-500 text-white text-[9px] font-black tracking-widest px-2.5 py-0.5 rounded-full uppercase shadow-sm">
-                              현재 도전 단계 (구역)
-                            </span>
-                            <div className="absolute top-4 right-4 text-xs font-black text-slate-300 group-hover:text-slate-400">
-                              CH.MAIN
-                            </div>
-
-                            <div>
-                              <div className="text-[10px] text-slate-400 font-extrabold uppercase mt-1">{s.ageGroup} 전용 원리구역</div>
-                              <h3 className="text-base font-black text-slate-800 mt-1">{s.title}</h3>
-                              <p className="text-xs text-slate-500 mt-2 leading-relaxed h-11 line-clamp-2">
-                                {s.description}
-                              </p>
-
-                              {/* Concept Badges */}
-                              <div className="flex flex-wrap gap-1 mt-3">
-                                {s.concepts.map((concept, cIdx) => (
-                                  <span key={cIdx} className="text-[9px] bg-slate-50 text-slate-500 font-semibold px-2 py-0.5 border border-slate-100 rounded">
-                                    {concept}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Action Handles */}
-                            <div className="mt-5 border-t border-slate-100 pt-4 flex gap-2 items-center">
-                              <button
-                                onClick={() => {
-                                  setSelectedStage(s);
-                                  // Seed sandbox values
-                                  if (s.id === "stage-k7") {
-                                    setSandboxVal1(7);
-                                    setSandboxVal2(3);
-                                  } else if (s.id === "stage-g1") {
-                                    setSandboxVal1(8);
-                                    setSandboxVal2(6);
-                                  } else {
-                                    setSandboxVal1(24);
-                                    setSandboxVal2(8);
-                                  }
-                                  setActiveTab("training");
-                                }}
-                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-1.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <span>개념 원리 교구</span>
-                              </button>
-                              <button
-                                onClick={() => handleInitBattle(s)}
-                                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black py-2.5 px-1.5 rounded-xl transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer"
-                              >
-                                <Play className="w-3 h-3 text-rose-500 fill-rose-500" />
-                                <span>연산 전투하기</span>
-                              </button>
-                            </div>
-
-                            {/* Guaranteed AI Quiz Trigger */}
-                            <button
-                              onClick={() => handleFetchAiQuiz(s)}
-                              className="mt-2 w-full bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-700 border border-indigo-150 text-[10px] font-black py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <Sparkles className="w-3 h-3 text-purple-600 animate-pulse" />
-                              <span>AI 원리 융합 사고력 퀴즈</span>
-                            </button>
-
-                            {/* Score Tracker */}
-                            <div className="mt-3 flex justify-between text-[9px] text-slate-400 font-bold px-1">
-                              <span>격파한 보스 몬스터 수칭</span>
-                              <span className="text-slate-650 font-black text-rose-600">{score}마리</span>
-                            </div>
-                          </div>
+                            <span className="text-xl sm:text-2xl mb-1">{lvl.icon}</span>
+                            <span className="text-[11px] font-black tracking-tight">{lvl.title}</span>
+                            <span className="text-[8px] opacity-75 font-semibold text-slate-500 leading-none mt-0.5 hidden sm:block">{lvl.desc}</span>
+                          </button>
                         );
                       })}
                     </div>
-
-                    {/* Mastery Stage Progress & Promotion Card */}
-                    {(() => {
-                      const curStage = STAGES.find(s => s.ageGroup === profile.ageGroup);
-                      if (!curStage) return null;
-                      const curScore = profile.stats.stageHighScores[curStage.id] || 0;
-                      const hasNext = getNextAgeGroup(profile.ageGroup) !== null;
-
-                      return (
-                        <div className="mt-6 border-t border-slate-100 pt-6">
-                          <div className="flex items-center justify-between text-xs font-black mb-2">
-                            <span className="text-slate-500">🏆 {profile.ageGroup} 학년 마스터 달성률</span>
-                            <span className="text-pink-600">{curScore}/3 마리 격파</span>
-                          </div>
-                          
-                          {/* Progress Bar */}
-                          <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden border border-slate-200/50">
-                            <div 
-                              className="bg-gradient-to-r from-emerald-400 to-rose-500 h-full rounded-full transition-all duration-500" 
-                              style={{ width: `${Math.min(100, (curScore / 3) * 100)}%` }}
-                            />
-                          </div>
-
-                          {curScore >= 3 ? (
-                            <div className="mt-5 p-5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md relative overflow-hidden">
-                              <span className="absolute top-2.5 right-3 text-2xl select-none animate-pulse">👑</span>
-                              <h4 className="text-sm font-black flex items-center gap-1.5 mb-1 leading-none">
-                                축하합니다! {profile.ageGroup} 마스터 등극!
-                              </h4>
-                              <p className="text-[11px] leading-relaxed opacity-95 mt-1.5">
-                                전 구역의 보스 몬스터 토벌에 완벽 성공(3마리 격파 달성)하여 완벽한 연산 천재임을 증명하셨습니다! 다음 마법 관문으로 성장을 해제할 수 있습니다.
-                              </p>
-                              
-                              {hasNext ? (
-                                <button
-                                  onClick={handleProgressStage}
-                                  className="mt-4 w-full bg-white hover:bg-slate-50 text-orange-600 font-extrabold text-xs py-3.5 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                  <span>다음 단계 학년 마법 잠금 해제 ({getNextAgeGroup(profile.ageGroup)}) 🌟</span>
-                                  <ArrowRight className="w-4 h-4" />
-                                </button>
-                              ) : (
-                                <div className="mt-4 bg-amber-950/20 p-3 rounded-xl text-center text-xs font-black">
-                                  🎉 올클리어 마스터 완수! 초등 원리셈 전 과정을 격파하여 모든 단원을 정복했습니다!
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="mt-4 p-4 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 text-slate-500 text-[11px] leading-relaxed">
-                              💡 <strong>마스터 비법:</strong> 몬스터와 전투를 {3 - curScore}번만 더 승리하면 보스 마스터 인증과 함께 다음 나이대의 학습지 장을 오픈할 수 있게 유도됩니다!
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </div>
+
+                  {/* BRANCH A: WORLD MAP OVERVIEW SCREEN */}
+                  {mapViewMode === "world" && (
+                    <div className="bg-white rounded-3xl p-6 border-4 border-rose-100 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-rose-400/5 to-amber-400/5 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="text-center max-w-md mx-auto mb-6">
+                        <span className="text-3xl animate-bounce inline-block">🗺️</span>
+                        <h2 className="text-xl font-black text-slate-800 mt-1">원리셈 수 연산 마법 월드맵</h2>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                          잠겨있는 다른 단계는 이전 단계를 마스터(보스 3마리 격파 🏆)하면 자동으로 문이 열려 다음 장소로 여행을 떠날 수 있답니다!
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {STAGES.map((s) => {
+                          const unlocked = isWorldUnlocked(s.id, profile);
+                          const score = profile.stats.stageHighScores[s.id] || 0;
+                          
+                          // Custom styling for cards based on step
+                          const themeColor = s.id === "stage-k7" ? { border: "border-pink-200", bg: "bg-pink-50/50", accent: "pink" } 
+                                           : s.id === "stage-g1" ? { border: "border-amber-200", bg: "bg-amber-50/50", accent: "amber" }
+                                           : s.id === "stage-g2" ? { border: "border-emerald-200", bg: "bg-emerald-50/50", accent: "emerald" } 
+                                           : { border: "border-sky-200", bg: "bg-sky-50/50", accent: "sky" };
+
+                          return (
+                            <div
+                              key={s.id}
+                              onClick={() => {
+                                if (unlocked) {
+                                  // Update the active user profile target first
+                                  setProfile(prev => {
+                                    const updated = { ...prev, ageGroup: s.ageGroup, currentStageId: s.id };
+                                    localStorage.setItem("wonri_math_profile", JSON.stringify(updated));
+                                    return updated;
+                                  });
+                                  setSelectedStage(s);
+                                  setMapViewMode("stage");
+                                } else {
+                                  setAlertMessage({
+                                    title: "🔒 굳게 밀봉된 마법 금고!",
+                                    desc: `아직 이 월드로 갈 수 없어요! 이전 월드(${s.id === "stage-g1" ? "7세" : s.id === "stage-g2" ? "8세" : "9세"})의 보스 몬스터 3마리를 물리쳐 완벽히 마스터해주면 봉인이 풀려요!`,
+                                    icon: "🧙‍♂️"
+                                  });
+                                }
+                              }}
+                              className={`p-5 rounded-2xl border-3 transition-all relative flex flex-col justify-between group cursor-pointer ${themeColor.border} ${themeColor.bg} ${
+                                unlocked 
+                                  ? "hover:border-slate-800 hover:scale-[1.02] hover:shadow" 
+                                  : "opacity-75 bg-slate-50 border-slate-200"
+                              }`}
+                            >
+                              {/* Sequence Badge / Lock Icon */}
+                              <div className="flex justify-between items-center mb-2">
+                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                  unlocked ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-500"
+                                }`}>
+                                  {s.ageGroup} 월드
+                                </span>
+                                <div>
+                                  {unlocked ? (
+                                    <span className="text-emerald-505 font-black text-[11px] flex items-center gap-0.5 text-emerald-600">🔓 오픈됨</span>
+                                  ) : (
+                                    <span className="text-slate-400 font-bold text-[11px] flex items-center gap-0.5">🔒 봉인됨</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <h3 className="text-base font-black text-slate-800 group-hover:text-amber-600 transition-colors">
+                                  {s.title}
+                                </h3>
+                                <p className="text-xs text-slate-500 leading-snug line-clamp-2 min-h-8">
+                                  {s.description}
+                                </p>
+                              </div>
+
+                              {/* Progress status or unlock requirements */}
+                              <div className="mt-4 pt-3 border-t border-slate-200/50 flex items-center justify-between">
+                                {unlocked ? (
+                                  <>
+                                    <div className="flex items-center gap-1 text-[10px] font-black text-amber-600">
+                                      <span>⭐ 격파 수:</span>
+                                      <span className="text-slate-800 bg-amber-100 px-1.5 py-0.5 rounded-full">{score}/3 마리</span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 group-hover:text-slate-700 font-extrabold flex items-center gap-0.5">
+                                      모험가 영지 입장 👉
+                                    </span>
+                                  </>
+                                ) : (
+                                  <div className="text-[10px] text-rose-500 font-black flex items-center gap-1 bg-rose-50 px-2 py-1 rounded w-full">
+                                    <span>⚠️ 해금 요건:</span>
+                                    <span>이전 단계 보스 토벌 완수 (3마리 격파)</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BRANCH B: SINGLE STAGE PLAY DETAIL PANEL */}
+                  {mapViewMode === "stage" && (
+                    <div className="bg-white rounded-3xl p-6 border-4 border-slate-100 shadow-sm">
+                      {/* Back to world navigator breadcrumb button */}
+                      <button
+                        onClick={() => setMapViewMode("world")}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs py-2 px-4 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer mb-5 border border-slate-200"
+                      >
+                        <span>⬅️ 전체 월드지도 보러 가기 (단계 전환)</span>
+                      </button>
+
+                      <div className="border bg-slate-50/50 p-5 rounded-3xl border-slate-200/80 mb-6">
+                        <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-widest inline-block select-none mb-1">
+                          현재 진입한 전용 영역 🌋
+                        </span>
+                        <h2 className="text-lg font-black text-slate-900 leading-tight">
+                          {selectedStage.ageGroup} 전용: {selectedStage.title}
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                          {selectedStage.description}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {selectedStage.concepts.map((concept, cIdx) => (
+                            <span key={cIdx} className="text-[10px] bg-white text-slate-600 font-extrabold px-2.5 py-1 border border-slate-200 rounded-lg">
+                              🧩 {concept}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Main action triggers */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* 1. Math block training tool */}
+                        <div className="p-5 border-3 border-emerald-400 bg-emerald-50/10 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
+                          <span className="absolute -right-4 -bottom-4 text-7xl opacity-10 font-bold select-none text-emerald-400">🧮</span>
+                          <div>
+                            <span className="bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">눈 학습 놀이</span>
+                            <h3 className="text-base font-black text-slate-800 mt-2">개념 원리 교구 교실</h3>
+                            <p className="text-xs text-slate-505 leading-relaxed mt-1.5 h-12">
+                              10칸 상자 판, 동수누가 과일 묶기 등 재미있는 애니메이션 도구판을 보며 수학 원리를 눈으로 먼저 마스터하세요.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              // Seed sandbox values
+                              if (selectedStage.id === "stage-k7") {
+                                setSandboxVal1(7);
+                                setSandboxVal2(3);
+                              } else if (selectedStage.id === "stage-g1") {
+                                setSandboxVal1(8);
+                                setSandboxVal2(6);
+                              } else {
+                                setSandboxVal1(24);
+                                setSandboxVal2(8);
+                              }
+                              setActiveTab("training");
+                            }}
+                            className="mt-4 w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black py-3 rounded-xl transition-all flex items-center justify-center gap-1 shadow cursor-pointer active:scale-95"
+                          >
+                            <span>입실하기 🏫</span>
+                          </button>
+                        </div>
+
+                        {/* 2. Monster battle stage */}
+                        <div className="p-5 border-3 border-rose-450 bg-rose-50/10 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
+                          <span className="absolute -right-4 -bottom-4 text-7xl opacity-10 font-bold select-none text-rose-400">⚔️</span>
+                          <div>
+                            <span className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">전투 모드</span>
+                            <h3 className="text-base font-black text-slate-800 mt-2">연산 보스 몬스터 격파</h3>
+                            <p className="text-xs text-slate-505 leading-relaxed mt-1.5 h-12">
+                              천종현수학 사고력 문제와 실전 수식을 연속으로 성공시켜 마법포를 쏘고 보스를 사냥해 격파해 보세요!
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleInitBattle(selectedStage)}
+                            className="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-black py-3 rounded-xl transition-all flex items-center justify-center gap-1 shadow cursor-pointer active:scale-95"
+                          >
+                            <Play className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                            <span>연산 전투 시작하기 ⚔️</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* AI Quiz block */}
+                      <button
+                        onClick={() => handleFetchAiQuiz(selectedStage)}
+                        className="mt-4 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-black py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                      >
+                        <Sparkles className="w-4 h-4 text-yellow-300 animate-spin" />
+                        <span>AI 원리 융합 사고력 퀴즈 훈련 받기 🎓</span>
+                      </button>
+
+                      {/* Mastery Stage Progress & Promotion Card inside single block */}
+                      {(() => {
+                        const score = profile.stats.stageHighScores[selectedStage.id] || 0;
+                        const hasNext = getNextAgeGroup(selectedStage.ageGroup) !== null;
+
+                        return (
+                          <div className="mt-8 border-t border-slate-100 pt-6">
+                            <div className="flex items-center justify-between text-xs font-black mb-2">
+                              <span className="text-slate-600 font-extrabold">🏆 현재 월드 구역 보스 마스터 달성률</span>
+                              <span className="text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">{score}/3 마리 격파</span>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden border border-slate-200 shadow-inner">
+                              <div 
+                                className="bg-gradient-to-r from-teal-400 via-amber-400 to-rose-500 h-full rounded-full transition-all duration-500" 
+                                style={{ width: `${Math.min(100, (score / 3) * 100)}%` }}
+                              />
+                            </div>
+
+                            {score >= 3 ? (
+                              <div className="mt-5 p-5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md relative overflow-hidden">
+                                <span className="absolute top-2.5 right-3 text-2xl select-none animate-pulse">👑</span>
+                                <h4 className="text-sm font-black flex items-center gap-1.5 mb-1 leading-none">
+                                  축하합니다! {selectedStage.ageGroup} 마스터 등극!
+                                </h4>
+                                <p className="text-[11px] leading-relaxed opacity-95 mt-1.5">
+                                  모든 수식을 완파하여 격파한 보스가 3마리에 도달했습니다! 이제 봉인되어 전설 속 금고에 갇혀 있던 한 살 위의 마법 영역이 영원히 해금되어 플레이할 수 있게 됩니다!
+                                </p>
+                                
+                                {hasNext ? (
+                                  <button
+                                    onClick={handleProgressStage}
+                                    className="mt-4 w-full bg-white hover:bg-slate-50 text-orange-600 font-extrabold text-xs py-3.5 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                                  >
+                                    <span>식선마법 관문 해제 ({getNextAgeGroup(selectedStage.ageGroup)}) 🌟</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <div className="mt-4 bg-amber-950/20 p-3 rounded-xl text-center text-xs font-black">
+                                    🎉 올클리어 마스터 완수! 초등 원리셈 전 과정을 격파하여 모든 단원을 정복했습니다!
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-4 p-4 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 text-slate-500 text-[11px] leading-relaxed font-bold">
+                                💡 <strong>보스 토벌 목표:</strong> 배틀에서 몬스터를 {3 - score}번만 더 낚아 승리하면 완벽 학년 마스터가 완료되며, 다음 학년 모험 카드의 굳게 닫힌 봉인 자물쇠가 사르르 풀려 들어갈 수 있답니다!
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                 </div>
 
                 {/* Right col: Daily Missions & Pet Card Showcase */}
@@ -1659,13 +1849,13 @@ export default function App() {
                       )}
                     </AnimatePresence>
 
-                    <p className="text-sm font-extrabold text-slate-800 leading-relaxed whitespace-pre-wrap max-w-xl mx-auto">
+                    <p className="text-xl md:text-2xl font-black text-slate-900 leading-relaxed whitespace-pre-wrap max-w-2xl mx-auto">
                       {battleQuiz.question}
                     </p>
                   </div>
 
                   {/* Multiple Choice grids */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     {battleQuiz.choices.map((choice, cIdx) => {
                       const isSelected = answeredState.selectedIdx === cIdx;
                       const isCorrectAnswer = cIdx === battleQuiz.correctIndex;
@@ -1686,10 +1876,10 @@ export default function App() {
                           key={cIdx}
                           disabled={answeredState.selectedIdx !== null}
                           onClick={() => handleBattleAnswer(cIdx)}
-                          className={`p-4 text-sm font-black rounded-2xl border-2 transition-all leading-snug flex items-center justify-center gap-2 ${btnStyle}`}
+                          className={`py-5 px-4 text-base md:text-xl font-black rounded-3xl border-3 transition-all leading-snug flex items-center justify-center gap-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] ${btnStyle} hover:scale-[1.03] active:scale-95 duration-100`}
                         >
                           <span>{choice}</span>
-                          {answeredState.selectedIdx !== null && isCorrectAnswer && <Check className="w-4 h-4" />}
+                          {answeredState.selectedIdx !== null && isCorrectAnswer && <Check className="w-5 h-5 stroke-[3]" />}
                         </button>
                       );
                     })}

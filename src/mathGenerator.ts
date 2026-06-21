@@ -136,8 +136,14 @@ export function generateLocalQuestion(
   ageGroup: AgeGroup,
   difficultyRank: "쉬움" | "보통" | "어려움" | "지옥"
 ): QuizQuestion {
-  // 35% chance to trigger a premium specialized critical thinking (TOP) or advanced (follow-and-solve) problem!
-  if (Math.random() < 0.35) {
+  // 35% chance by default, but highly sensitive to chosen difficultyRank!
+  let specialChance = 0.35;
+  if (difficultyRank === "쉬움") specialChance = 0.05;
+  else if (difficultyRank === "보통") specialChance = 0.35;
+  else if (difficultyRank === "어려움") specialChance = 0.70;
+  else if (difficultyRank === "지옥") specialChance = 1.0; // Entirely Critical/Advanced problems!
+
+  if (Math.random() < specialChance) {
     const list = SPECIAL_QUESTIONS[ageGroup];
     if (list && list.length > 0) {
       const selected = list[Math.floor(Math.random() * list.length)];

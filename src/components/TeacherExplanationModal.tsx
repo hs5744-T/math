@@ -59,62 +59,67 @@ export default function TeacherExplanationModal({
 
           <div className="p-6 overflow-y-auto space-y-6 flex-1">
             {/* Teacher Greeting and Avatar Bubble */}
-            <div className="flex items-start gap-4 bg-orange-50/70 p-4 rounded-2xl border border-orange-100">
-              <div className="text-4xl select-none animate-bounce shrink-0 mt-1">
-                👨‍🏫
+            <div className="flex items-center gap-4 bg-amber-500/10 p-5 rounded-2xl border-2 border-amber-400/50">
+              <div className="w-16 h-16 rounded-full border-4 border-amber-400 overflow-hidden shrink-0 shadow-lg relative animate-bounce">
+                <img 
+                  src="/src/assets/images/teacher_character_1782021491297.jpg" 
+                  referrerPolicy="no-referrer" 
+                  alt="원리 멘토 천선생님" 
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-black text-orange-800">
-                  천선생님의 생각 더하기
+                <h4 className="text-base font-black text-amber-850">
+                  천선생님의 생각 더하기 💡
                 </h4>
-                <p className="text-xs font-medium text-slate-600 leading-relaxed">
+                <p className="text-sm font-bold text-slate-705 leading-relaxed">
                   “방금 풀어본 사고력 연산은 정성스럽게 한 조각씩 따라가면 수의 원리가 보여요! 대장님, 저와 함께 비법 칠판을 집중해서 한 알 한 알 짚어볼까요?”
                 </p>
               </div>
             </div>
 
             {/* Blackboard Screen with Math Formula Visualizer */}
-            <div className="bg-slate-900 rounded-2xl p-5 border-4 border-slate-700 shadow-inner relative overflow-hidden font-mono text-white">
+            <div className="bg-emerald-950 rounded-2xl p-6 border-4 border-emerald-800 shadow-inner relative overflow-hidden font-mono text-white">
               {/* Subtle design accents */}
-              <div className="absolute top-2 right-2 text-[10px] text-slate-500 font-bold tracking-widest uppercase select-none">
-                원리 셈 칠판 • blackboard
+              <div className="absolute top-2 right-2 text-[10px] text-emerald-400 font-bold tracking-widest uppercase select-none">
+                원리 셈 초록 칠판 • blackboard
               </div>
               
               {/* Original Question */}
-              <div className="border-b border-slate-700 pb-3 mb-4">
-                <span className="text-[10px] text-amber-400 font-black block mb-1">
-                  [문제 탐구]
+              <div className="border-b border-emerald-800 pb-4 mb-4">
+                <span className="text-xs text-amber-300 font-black block mb-1">
+                  [문제 탐구 🧩]
                 </span>
-                <p className="text-sm font-semibold leading-relaxed text-slate-200">
+                <p className="text-base md:text-lg font-black leading-relaxed text-slate-100 whitespace-pre-line">
                   {question}
                 </p>
               </div>
 
               {/* Correct Answer Display */}
               {correctAnswerText && (
-                <div className="flex items-center gap-2 mb-4 bg-emerald-900/40 border border-emerald-700/50 p-2.5 rounded-xl">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span className="text-xs text-slate-300 font-bold">
-                    반짝이는 정답: <strong className="text-emerald-400 text-sm font-black">{correctAnswerText}</strong>
+                <div className="flex items-center gap-2 mb-4 bg-emerald-900/60 border border-emerald-600/50 p-3.5 rounded-xl">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+                  <span className="text-sm text-slate-205 font-black">
+                    반짝이는 핵심 정답: <span className="text-yellow-300 text-lg font-extrabold">{correctAnswerText}</span>
                   </span>
                 </div>
               )}
 
               {/* Step-by-Step Interactive Guide */}
               <div className="space-y-3">
-                <span className="text-[10px] text-indigo-400 font-black block mb-0.5">
-                  [천선생님의 1:1 과외 비법]
+                <span className="text-xs text-amber-300 font-black block mb-0.5 animate-pulse">
+                  [천선생님의 1:1 과외 비법 전수 👨‍🏫]
                 </span>
-                <div className="space-y-2 text-xs leading-relaxed text-slate-100">
+                <div className="space-y-3.5 text-sm md:text-base leading-relaxed text-slate-100">
                   {steps.map((step, idx) => {
                     const isStepMarker = step.includes("단계:") || step.includes("Step");
                     return (
                       <div 
                         key={idx}
-                        className={`p-2.5 rounded-xl transition-all ${
+                        className={`p-3 rounded-2xl transition-all font-black ${
                           isStepMarker 
-                            ? "bg-slate-800/80 border-l-4 border-amber-400 pl-3.5" 
-                            : "bg-slate-950/20"
+                            ? "bg-emerald-900/40 border-l-6 border-amber-400 pl-4 text-yellow-100" 
+                            : "bg-emerald-950/40 border border-emerald-900"
                         }`}
                       >
                         {step}
