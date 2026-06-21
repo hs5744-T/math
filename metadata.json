@@ -1,0 +1,8 @@
+{
+  "name": "원리셈 수학 원정대",
+  "description": "7세부터 10세 어린이를 위한 AI 기반 맞춤형 연산 어드벤처 게임",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
